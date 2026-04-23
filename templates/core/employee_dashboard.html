@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+<section class="card single-col">
+    <h2>New requests - all sports bases</h2>
+    <p class="subtitle">Process pending requests in chronological order, from any location.</p>
+    <table>
+        <thead>
+            <tr>
+                <th>Client</th>
+                <th>Sports base</th>
+                <th>Resource</th>
+                <th>Date</th>
+                <th>Interval</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="pending-table-body">
+            {% for req in pending_requests %}
+            <tr id="row-{{ req.id }}">
+                <td>{{ req.client.username }}</td>
+                <td>{{ req.location.name }}</td>
+                <td>{{ req.resource.name }}</td>
+                <td>{{ req.date }}</td>
+                <td>{{ req.start_time }} - {{ req.end_time }}</td>
+                <td class="actions">
+                    <button class="decision-btn btn-success" data-id="{{ req.id }}" data-action="confirm">Confirm</button>
+                    <button class="decision-btn btn-danger" data-id="{{ req.id }}" data-action="reject">Reject</button>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6">There are no pending requests.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <p id="employee-msg" class="status-msg"></p>
+</section>
+<script src="{% static 'js/employee_dashboard.js' %}"></script>
+{% endblock %}

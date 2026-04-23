@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+<div class="row">
+    <section class="card">
+        <h2>Book a court</h2>
+        <p class="subtitle">Choose a resource and time interval, then submit your request.</p>
+        <div class="form-grid">
+            <div class="field" style="grid-column: span 2;">
+                <label for="sport-select">Sport type</label>
+                <select id="sport-select">
+                    {% for sport_type in sport_types %}
+                        <option value="{{ sport_type|lower }}">{{ sport_type|title }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="field" style="grid-column: span 2;">
+                <label for="resource-select">Sports resource</label>
+                <select id="resource-select">
+                    {% for resource in resources %}
+                        <option value="{{ resource.id }}" data-sport-type="{{ resource.sport_type|lower }}">{{ resource.location.name }} - {{ resource.name }} ({{ resource.sport_type }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="field">
+                <label for="booking-date">Date</label>
+                <input id="booking-date" type="date">
+            </div>
+            <div class="field">
+                <label for="start-time">Start time</label>
+                <input id="start-time" type="time" value="18:00">
+            </div>
+            <div class="field">
+                <label for="end-time">End time</label>
+                <input id="end-time" type="time" value="19:00">
+            </div>
+        </div>
+        <div class="actions">
+            <button id="check-btn" class="btn-secondary">Check availability</button>
+            <button id="send-btn">Submit request</button>
+        </div>
+        <p id="result-msg" class="status-msg"></p>
+        <h3>Existing time slots</h3>
+        <ul id="slots-list" class="chip-list"></ul>
+    </section>
+
+    <section class="card">
+        <h2>Request history</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Resource</th>
+                    <th>Date</th>
+                    <th>Interval</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in history %}
+                <tr>
+                    <td>{{ item.resource.name }}</td>
+                    <td>{{ item.date }}</td>
+                    <td>{{ item.start_time }} - {{ item.end_time }}</td>
+                    <td>{{ item.get_status_display }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="4">No requests yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+</div>
+
+<section>
+    <h2 class="section-title">Most visited sports</h2>
+    <div class="sports-grid">
+        {% for item in most_visited_sports %}
+        <article class="sport-card">
+            <div class="sport-image" style="background-image: url('{{ item.image_url }}');"></div>
+            <div class="sport-content">
+                <h3 class="sport-title">{{ item.sport }}</h3>
+                <p class="sport-meta">{{ item.location }} - {{ item.city }}</p>
+                <div class="sport-badges">
+                    <span class="badge">Rating {{ item.rating }}</span>
+                    <span class="badge">{{ item.price }}</span>
+                </div>
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+</section>
+
+<script src="{% static 'js/client_dashboard.js' %}?v=2"></script>
+{% endblock %}

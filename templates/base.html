@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sportal</title>
+    <style>
+        :root {
+            --bg: #f3f7fb;
+            --bg-accent: #dfeffc;
+            --card: #ffffff;
+            --text: #172133;
+            --muted: #5e6b7e;
+            --line: #dce5f2;
+            --primary: #2c6fda;
+            --primary-dark: #1f4fa8;
+            --success: #1f9254;
+            --danger: #c74646;
+            --shadow: 0 12px 30px rgba(31, 60, 105, 0.12);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            color: var(--text);
+            background: linear-gradient(180deg, #f9fcff 0%, var(--bg) 45%, var(--bg-accent) 100%);
+            min-height: 100vh;
+        }
+
+        .page {
+            max-width: 1120px;
+            margin: 0 auto;
+            padding: 32px 20px 48px;
+        }
+
+        .hero {
+            text-align: center;
+            margin-bottom: 22px;
+        }
+
+        .hero h1 {
+            margin: 0 0 8px;
+            font-size: 44px;
+            font-weight: 800;
+            letter-spacing: 0.2px;
+        }
+
+        .hero p {
+            margin: 0;
+            color: var(--muted);
+            font-size: 16px;
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 18px;
+            font-size: 14px;
+            color: var(--muted);
+        }
+
+        .topbar a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .row {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 22px;
+            align-items: start;
+        }
+
+        .single-col {
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            padding: 20px;
+            width: 100%;
+            box-shadow: var(--shadow);
+        }
+
+        .card h2 {
+            margin-top: 0;
+            margin-bottom: 14px;
+            font-size: 30px;
+        }
+
+        .subtitle {
+            color: var(--muted);
+            margin-top: -4px;
+            margin-bottom: 18px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .field { display: flex; flex-direction: column; gap: 6px; }
+        .field label { font-size: 14px; color: var(--muted); }
+
+        input, select {
+            width: 100%;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            padding: 10px 12px;
+            background: #fff;
+            font-size: 14px;
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 14px;
+        }
+
+        button {
+            cursor: pointer;
+            border: 0;
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-weight: 600;
+            color: #fff;
+            background: var(--primary);
+            transition: 0.2s ease;
+        }
+
+        button:hover { background: var(--primary-dark); }
+        .btn-secondary { background: #5d6e86; }
+        .btn-secondary:hover { background: #4c5b6f; }
+        .btn-success { background: var(--success); }
+        .btn-danger { background: var(--danger); }
+
+        .status-msg {
+            margin-top: 12px;
+            color: var(--muted);
+            min-height: 20px;
+            font-size: 14px;
+        }
+
+        .chip-list {
+            margin: 0;
+            padding-left: 18px;
+            color: #354255;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            overflow: hidden;
+            border-radius: 10px;
+            border: 1px solid var(--line);
+        }
+
+        th, td {
+            border-bottom: 1px solid var(--line);
+            padding: 10px;
+            text-align: left;
+            font-size: 14px;
+        }
+
+        th {
+            background: #f5f8fd;
+            font-weight: 700;
+            color: #223049;
+        }
+
+        tr:last-child td { border-bottom: 0; }
+
+        a {
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .hint {
+            background: #f6f9ff;
+            border: 1px solid #dbe6fb;
+            border-radius: 10px;
+            padding: 12px;
+            margin-top: 14px;
+            font-size: 14px;
+            color: #3a4a62;
+        }
+
+        .section-title {
+            margin: 26px 0 14px;
+            font-size: 30px;
+        }
+
+        .sports-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 18px;
+        }
+
+        .sport-card {
+            background: #fff;
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+        }
+
+        .sport-image {
+            height: 180px;
+            background-size: cover;
+            background-position: center;
+        }
+
+        .sport-content {
+            padding: 14px 16px 16px;
+        }
+
+        .sport-title {
+            margin: 0 0 6px;
+            font-size: 22px;
+        }
+
+        .sport-meta {
+            margin: 0 0 10px;
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        .sport-badges {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            font-size: 12px;
+            background: #eef4ff;
+            color: #28406f;
+            padding: 6px 9px;
+            border-radius: 999px;
+            font-weight: 700;
+        }
+
+        .search-hero {
+            margin-top: 26px;
+            margin-bottom: 24px;
+            background: rgba(255, 255, 255, 0.92);
+            border: 1px solid var(--line);
+            border-radius: 18px;
+            box-shadow: var(--shadow);
+            padding: 30px 26px 24px;
+        }
+
+        .search-hero h2 {
+            text-align: center;
+            margin: 0 0 16px;
+            font-size: 42px;
+        }
+
+        .search-hero .subtitle {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .search-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .search-action {
+            display: flex;
+            justify-content: center;
+            margin-top: 18px;
+        }
+
+        .search-action button {
+            min-width: 180px;
+            padding: 12px 16px;
+            font-size: 17px;
+        }
+
+        .page-footer {
+            margin-top: 34px;
+            border-radius: 16px;
+            background: rgba(189, 214, 236, 0.75);
+            border: 1px solid #c6dbee;
+            padding: 22px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 18px;
+        }
+
+        .footer-title {
+            margin: 0 0 10px;
+            color: #2f5ea1;
+            font-size: 28px;
+        }
+
+        .footer-links {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: grid;
+            gap: 8px;
+        }
+
+        .newsletter-form {
+            display: grid;
+            gap: 10px;
+        }
+
+        .newsletter-form button {
+            background: #1f9254;
+        }
+
+        .newsletter-form button:hover {
+            background: #16713f;
+        }
+
+        @media (max-width: 900px) {
+            .hero h1 { font-size: 36px; }
+            .row { grid-template-columns: 1fr; }
+            .form-grid { grid-template-columns: 1fr; }
+            .sports-grid { grid-template-columns: 1fr; }
+            .search-grid { grid-template-columns: 1fr; }
+            .search-hero h2 { font-size: 34px; }
+            .page-footer { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+    <header class="hero">
+        <h1>Sportal MVP</h1>
+        <p>Fast, clear sports reservations without overlaps.</p>
+    </header>
+    {% if request.user.is_authenticated %}
+        <div class="topbar">
+            Logged in as <strong style="margin: 0 6px;">{{ request.user.username }}</strong> |
+            <a style="margin-left: 6px;" href="{% url 'logout' %}">Logout</a>
+        </div>
+    {% endif %}
+    {% if messages %}
+        {% for message in messages %}
+            <p class="status-msg">{{ message }}</p>
+        {% endfor %}
+    {% endif %}
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+    </div>
+</body>
+</html>

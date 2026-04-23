@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card single-col" style="max-width: 520px;">
+    <h2>Login</h2>
+    <p class="subtitle">Sign in to manage your bookings.</p>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Sign in</button>
+    </form>
+    <p class="hint">You can sign in with either username or email.</p>
+    <p>Don't have an account? <a href="{% url 'register' %}">Create a client account</a></p>
+    <p class="hint">
+        For a quick demo run <code>seed_demo</code> and use:
+        <br>client_demo / client1234
+        <br>employee_demo / employee1234
+    </p>
+</div>
+{% endblock %}
