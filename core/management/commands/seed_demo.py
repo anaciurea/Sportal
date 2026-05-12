@@ -1,7 +1,9 @@
+from datetime import date, time, timedelta
+
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 
-from core.models import Company, EmployeeProfile, Location, SportResource
+from core.models import BookingRequest, Company, EmployeeProfile, Location, SportResource
 
 
 class Command(BaseCommand):
@@ -10,87 +12,119 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         user_model = get_user_model()
 
-        admin_user, admin_created = user_model.objects.get_or_create(
+        # ── users ──────────────────────────────────────────────────────────
+        admin_user, created = user_model.objects.get_or_create(
             username="admin",
             defaults={"is_staff": True, "is_superuser": True, "email": "admin@sportal.local"},
         )
-        if admin_created:
+        if created:
             admin_user.set_password("admin1234")
             admin_user.save()
-        elif not admin_user.email:
-            admin_user.email = "admin@sportal.local"
-            admin_user.save(update_fields=["email"])
 
-        client_user, client_created = user_model.objects.get_or_create(
+        client_user, created = user_model.objects.get_or_create(
             username="client_demo", defaults={"email": "client_demo@sportal.local"}
         )
-        if client_created:
+        if created:
             client_user.set_password("client1234")
             client_user.save()
-        elif not client_user.email:
-            client_user.email = "client_demo@sportal.local"
-            client_user.save(update_fields=["email"])
 
-        employee_user, employee_created = user_model.objects.get_or_create(
+        employee_user, created = user_model.objects.get_or_create(
             username="employee_demo", defaults={"email": "employee_demo@sportal.local"}
         )
-        if employee_created:
+        if created:
             employee_user.set_password("employee1234")
             employee_user.save()
-        elif not employee_user.email:
-            employee_user.email = "employee_demo@sportal.local"
-            employee_user.save(update_fields=["email"])
 
-        ana_user, ana_created = user_model.objects.get_or_create(
+        ana_user, created = user_model.objects.get_or_create(
             username="ana_ciurea", defaults={"email": "anaciurea644@gmail.com"}
         )
-        if ana_created:
+        if created:
             ana_user.set_password("ana1234")
             ana_user.save()
-        elif ana_user.email != "anaciurea644@gmail.com":
-            ana_user.email = "anaciurea644@gmail.com"
-            ana_user.save(update_fields=["email"])
 
-        company, _ = Company.objects.get_or_create(name="Sportal Demo Company")
-        locations = [
-            ("Arena Centrala", "Bd. Sportului 10"),
-            ("Complex Padel Nord", "Str. Nordului 22"),
-            ("Sala Polivalenta Sud", "Calea Sudului 8"),
-            ("Parc Sportiv Est", "Str. Stadionului 14"),
+        # ── reset sport data (keep users & bookings untouched if resources unchanged) ──
+        BookingRequest.objects.all().delete()
+        SportResource.objects.all().delete()
+        Location.objects.all().delete()
+        Company.objects.all().delete()
+        EmployeeProfile.objects.all().delete()
+
+        # ── venues: one court per sport ────────────────────────────────────
+        # (company, location_name, address, court_name, sport_type, price)
+        venues = [
+            ("Arena Națională",           "Bd. Basarabia 37-39, București",          "Arena Națională",        "fotbal",   300),
+            ("BNR Arenas",                "Bd. Pierre de Coubertin 3-5, București",  "BNR Arenas",             "tenis",    120),
+            ("Padel Arena București",     "Str. Erou Iancu Nicolae 128, Voluntari",  "Padel Arena București",  "padel",    170),
+            ("Sala Dinamo",               "Str. Ștefan cel Mare 9, București",       "Sala Dinamo",            "basket",   250),
+            ("Sala Polivalentă",          "Str. Maior Coravu 6, București",          "Sala Polivalentă",       "volei",    200),
+            ("Arena CSM București",       "Bd. Lacul Tei 124, București",            "Arena CSM București",    "handbal",  180),
+            ("Complexul Lia Manoliu",     "Bd. Basarabia 37-39, București",          "Complexul Lia Manoliu",  "badminton",110),
+            ("Stadionul Giulești",        "Calea Giulești 18, București",            "Stadionul Giulești",     "fotbal",   280),
+            ("World Royal Padel",         "Str. Biharia 67-77, București",           "World Royal Padel",      "padel",    160),
         ]
-        location_by_name = {}
-        for location_name, address in locations:
-            location_obj, _ = Location.objects.get_or_create(
-                company=company,
-                name=location_name,
-                defaults={"address": address},
-            )
-            location_by_name[location_name] = location_obj
 
-        resources = [
-            ("Arena Centrala", "Teren Fotbal 1", "fotbal", 150),
-            ("Arena Centrala", "Teren Tenis 1", "tenis", 120),
-            ("Complex Padel Nord", "Teren Padel 1", "padel", 170),
-            ("Complex Padel Nord", "Teren Padel 2", "padel", 180),
-            ("Sala Polivalenta Sud", "Teren Basket 1", "basket", 140),
-            ("Sala Polivalenta Sud", "Teren Volei 1", "volei", 130),
-            ("Parc Sportiv Est", "Teren Handbal 1", "handbal", 135),
-            ("Parc Sportiv Est", "Teren Badminton 1", "badminton", 110),
-        ]
-        for location_name, resource_name, sport_type, price_per_hour in resources:
-            SportResource.objects.get_or_create(
-                location=location_by_name[location_name],
-                name=resource_name,
-                defaults={"sport_type": sport_type, "price_per_hour": price_per_hour},
+        first_location = None
+        for loc_name, address, court_name, sport_type, price in venues:
+            company, _ = Company.objects.get_or_create(name=loc_name)
+            location, _ = Location.objects.get_or_create(
+                company=company, name=loc_name, defaults={"address": address}
+            )
+            SportResource.objects.create(
+                location=location, name=court_name, sport_type=sport_type, price_per_hour=price
+            )
+            if first_location is None:
+                first_location = location
+
+        EmployeeProfile.objects.create(user=employee_user, location=first_location)
+
+        # ── historical & upcoming bookings ────────────────────────────────
+        today = date.today()
+        resources = {r.sport_type: r for r in SportResource.objects.select_related("location").all()}
+
+        def book(client, sport, days_offset, start_h, end_h, status, handled=None):
+            r = resources.get(sport)
+            if not r:
+                return
+            BookingRequest.objects.create(
+                client=client,
+                location=r.location,
+                resource=r,
+                date=today + timedelta(days=days_offset),
+                start_time=time(start_h, 0),
+                end_time=time(end_h, 0),
+                status=status,
+                handled_by=handled,
             )
 
-        EmployeeProfile.objects.get_or_create(
-            user=employee_user, defaults={"location": location_by_name["Arena Centrala"]}
-        )
+        S = BookingRequest.Status
+        # trecut – confirmate pentru istoric
+        book(client_user, "fotbal",    -7, 10, 12, S.CONFIRMED, employee_user)
+        book(client_user, "tenis",     -5, 14, 15, S.CONFIRMED, employee_user)
+        book(ana_user,    "padel",     -3, 16, 17, S.CONFIRMED, employee_user)
+        book(client_user, "basket",    -2, 18, 20, S.CONFIRMED, employee_user)
+        book(ana_user,    "volei",     -1, 10, 11, S.CONFIRMED, employee_user)
+        book(client_user, "badminton", -1, 14, 15, S.CONFIRMED, employee_user)
+        # trecut – respinse
+        book(ana_user,    "handbal",   -4, 20, 22, S.REJECTED,  employee_user)
+        book(client_user, "volei",     -6, 22, 23, S.REJECTED,  employee_user)
+        # azi – pending
+        book(client_user, "fotbal",     0, 10, 12, S.PENDING)
+        book(ana_user,    "tenis",      0, 14, 16, S.PENDING)
+        book(client_user, "padel",      0, 18, 19, S.PENDING)
+        # maine – pending
+        book(ana_user,    "basket",     1, 11, 13, S.PENDING)
+        book(client_user, "handbal",    1, 16, 17, S.PENDING)
+        book(ana_user,    "badminton",  1, 10, 11, S.PENDING)
+        # poimaine – pending
+        book(client_user, "volei",      2, 14, 15, S.PENDING)
+        book(ana_user,    "fotbal",     2, 17, 19, S.PENDING)
+        # confirmate viitoare
+        book(client_user, "tenis",      3, 10, 11, S.CONFIRMED, employee_user)
+        book(ana_user,    "padel",      4, 15, 16, S.CONFIRMED, employee_user)
 
         self.stdout.write(self.style.SUCCESS("Demo seed completed."))
         self.stdout.write("Users:")
         self.stdout.write("  admin / admin1234")
         self.stdout.write("  client_demo / client1234")
         self.stdout.write("  employee_demo / employee1234")
-        self.stdout.write("  anaciurea644@gmail.com / ana1234")
+        self.stdout.write("  ana_ciurea / ana1234")

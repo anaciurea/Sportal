@@ -14,9 +14,20 @@ from core.forms import ClientRegistrationForm
 from core.models import BookingRequest, SportResource
 from core.services.booking_service import confirm_request, create_booking_request
 
+_SPORT_IMAGES = {
+    "fotbal": "https://images.unsplash.com/photo-1553778263-73a83bab9b0c?auto=format&fit=crop&w=800&q=80",
+    "tenis": "https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?auto=format&fit=crop&w=800&q=80",
+    "padel": "https://images.unsplash.com/photo-1612872087720-bb876e2e67d1?auto=format&fit=crop&w=800&q=80",
+    "basket": "https://images.unsplash.com/photo-1546519638-68e109498ffc?auto=format&fit=crop&w=800&q=80",
+    "volei": "https://images.unsplash.com/photo-1592656094267-764a45160876?auto=format&fit=crop&w=800&q=80",
+    "handbal": "https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=800&q=80",
+    "badminton": "https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?auto=format&fit=crop&w=800&q=80",
+}
+_DEFAULT_IMAGE = "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=800&q=80"
+
 
 def is_employee(user):
-    return hasattr(user, "employee_profile")
+    return user.is_staff or hasattr(user, "employee_profile")
 
 
 def register_view(request):
@@ -41,7 +52,17 @@ def dashboard(request):
         pending = BookingRequest.objects.filter(status=BookingRequest.Status.PENDING).select_related(
             "client", "resource", "location"
         )
-        return render(request, "core/employee_dashboard.html", {"pending_requests": pending})
+        confirmed = (
+            BookingRequest.objects.filter(status=BookingRequest.Status.CONFIRMED)
+            .select_related("client", "resource", "location")
+            .order_by("-date", "-start_time")[:30]
+        )
+        resources = SportResource.objects.select_related("location").order_by("location__name", "name")
+        return render(request, "core/employee_dashboard.html", {
+            "pending_requests": pending,
+            "confirmed_requests": confirmed,
+            "resources": resources,
+        })
 
     resources = SportResource.objects.select_related("location").all()
     sport_types = (
@@ -50,23 +71,9 @@ def dashboard(request):
         .distinct()
     )
     history = BookingRequest.objects.filter(client=request.user).select_related("resource", "location")
-    most_visited_sports = [
-        {
-            "sport": "Tennis",
-            "location": "Tenix's Club Galaxy",
-            "city": "Bucharest",
-            "rating": "4.8",
-            "price": "120 RON / hour",
-            "image_url": "https://images.unsplash.com/photo-1560012057-4372e14c5085?auto=format&fit=crop&w=1200&q=80",
-        },
-        {
-            "sport": "Football",
-            "location": "Lia Manoliu Sports Complex",
-            "city": "Bucharest",
-            "rating": "4.7",
-            "price": "300 RON / hour",
-            "image_url": "https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=1200&q=80",
-        },
+    resources_with_images = [
+        {"resource": r, "image_url": _SPORT_IMAGES.get(r.sport_type, _DEFAULT_IMAGE)}
+        for r in resources
     ]
     return render(
         request,
@@ -75,9 +82,16 @@ def dashboard(request):
             "resources": resources,
             "sport_types": sport_types,
             "history": history,
-            "most_visited_sports": most_visited_sports,
+            "resources_with_images": resources_with_images,
         },
     )
+
+
+@login_required
+def resource_detail(request, resource_id):
+    resource = get_object_or_404(SportResource, pk=resource_id)
+    image_url = _SPORT_IMAGES.get(resource.sport_type, _DEFAULT_IMAGE)
+    return render(request, "core/resource_detail.html", {"resource": resource, "image_url": image_url})
 
 
 @login_required
@@ -115,22 +129,29 @@ def create_request_view(request):
     try:
         payload = json.loads(request.body)
     except json.JSONDecodeError:
-        return HttpResponseBadRequest("Invalid JSON.")
+        return JsonResponse({"error": "Date invalide."}, status=400)
 
     required = ["resource_id", "date", "start_time", "end_time"]
     if any(key not in payload for key in required):
-        return HttpResponseBadRequest("Missing booking fields.")
+        return JsonResponse({"error": "Completează toate câmpurile (dată, oră start, oră sfârșit)."}, status=400)
+
+    if not payload["date"]:
+        return JsonResponse({"error": "Selectează o dată."}, status=400)
 
     resource = get_object_or_404(SportResource, pk=payload["resource_id"])
     try:
         booking_date = datetime.strptime(payload["date"], "%Y-%m-%d").date()
-        start_time = datetime.strptime(payload["start_time"], "%H:%M").time()
-        end_time = datetime.strptime(payload["end_time"], "%H:%M").time()
     except ValueError:
-        return HttpResponseBadRequest("Invalid date/time values.")
+        return JsonResponse({"error": "Dată invalidă."}, status=400)
+
+    try:
+        start_time = datetime.strptime(payload["start_time"][:5], "%H:%M").time()
+        end_time = datetime.strptime(payload["end_time"][:5], "%H:%M").time()
+    except ValueError:
+        return JsonResponse({"error": "Oră invalidă."}, status=400)
 
     if start_time >= end_time:
-        return HttpResponseBadRequest("Start time must be before end time.")
+        return JsonResponse({"error": "Ora de start trebuie să fie înainte de ora de sfârșit."}, status=400)
 
     try:
         booking = create_booking_request(
@@ -179,6 +200,50 @@ def decide_request_view(request, booking_id):
         return JsonResponse({"id": booking.id, "status": booking.status})
 
     return HttpResponseBadRequest("Invalid action.")
+
+
+@login_required
+@require_GET
+def calendar_api(request):
+    if not is_employee(request.user):
+        return JsonResponse({"error": "Forbidden"}, status=403)
+
+    date_value = request.GET.get("date")
+    if not date_value:
+        return HttpResponseBadRequest("Missing date.")
+    try:
+        booking_date = datetime.strptime(date_value, "%Y-%m-%d").date()
+    except ValueError:
+        return HttpResponseBadRequest("Invalid date.")
+
+    resources = SportResource.objects.select_related("location").order_by("location__name", "name")
+    bookings = (
+        BookingRequest.objects.filter(date=booking_date)
+        .exclude(status=BookingRequest.Status.REJECTED)
+        .select_related("client", "resource")
+    )
+
+    bookings_by_resource = {}
+    for b in bookings:
+        bookings_by_resource.setdefault(b.resource_id, []).append({
+            "id": b.id,
+            "start_time": b.start_time.strftime("%H:%M"),
+            "end_time": b.end_time.strftime("%H:%M"),
+            "status": b.status,
+            "client": b.client.username,
+        })
+
+    result = [
+        {
+            "id": r.id,
+            "name": r.name,
+            "location": r.location.name,
+            "sport_type": r.sport_type,
+            "bookings": bookings_by_resource.get(r.id, []),
+        }
+        for r in resources
+    ]
+    return JsonResponse({"date": date_value, "resources": result})
 
 
 def notify_client_booking_decision(*, booking: BookingRequest):
