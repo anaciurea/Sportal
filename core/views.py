@@ -66,11 +66,6 @@ def dashboard(request):
         })
 
     resources = SportResource.objects.select_related("location").all()
-    sport_types = (
-        SportResource.objects.order_by("sport_type")
-        .values_list("sport_type", flat=True)
-        .distinct()
-    )
     history = (
         BookingRequest.objects
         .filter(client=request.user)
@@ -88,7 +83,6 @@ def dashboard(request):
         "core/client_dashboard.html",
         {
             "resources": resources,
-            "sport_types": sport_types,
             "history": history,
             "resources_with_images": resources_with_images,
             "today": today,
@@ -287,10 +281,6 @@ def stats_view(request):
     week_confirmed = BookingRequest.objects.filter(
         date__gte=week_start, status=BookingRequest.Status.CONFIRMED
     ).count()
-    week_pending = BookingRequest.objects.filter(
-        date__gte=week_start, status=BookingRequest.Status.PENDING
-    ).count()
-
     # Per-resource stats
     resource_stats = []
     for r in SportResource.objects.select_related("location").order_by("location__name", "name"):
@@ -317,7 +307,6 @@ def stats_view(request):
         "last_7": last_7,
         "status_totals": status_totals,
         "week_confirmed": week_confirmed,
-        "week_pending": week_pending,
         "resource_stats": resource_stats,
         "total_revenue": total_revenue,
         "today": today,
