@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+    .stats-page-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 22px;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+    .stats-page-header h2 { margin: 0; font-size: 30px; }
+
+    /* summary cards */
+    .summary-row {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+    .sum-card {
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 18px 20px;
+        text-align: center;
+        box-shadow: var(--shadow);
+    }
+    .sum-num { font-size: 38px; font-weight: 800; line-height: 1; margin-bottom: 6px; }
+    .sum-label { font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; }
+    .sum-confirmed .sum-num { color: var(--success); }
+    .sum-pending   .sum-num { color: #e07b00; }
+    .sum-week      .sum-num { color: var(--primary); }
+    .sum-revenue   .sum-num { font-size: 28px; color: #6b3fa0; }
+
+    /* bar chart */
+    .bar-chart-section { margin-bottom: 24px; }
+    .bar-chart {
+        display: flex;
+        align-items: flex-end;
+        gap: 10px;
+        height: 160px;
+        padding: 0 4px 0;
+        border-bottom: 2px solid var(--line);
+    }
+    .bar-col {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-end;
+        height: 100%;
+    }
+    .bar-fill {
+        width: 100%;
+        background: linear-gradient(180deg, #4a90d9, #2c6fda);
+        border-radius: 6px 6px 0 0;
+        min-height: 4px;
+        transition: height 0.3s ease;
+        position: relative;
+    }
+    .bar-fill.zero { background: #e2e8f0; }
+    .bar-count {
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--primary);
+        margin-bottom: 4px;
+    }
+    .bar-count.zero { color: var(--muted); }
+    .bar-labels {
+        display: flex;
+        gap: 10px;
+        margin-top: 6px;
+        padding: 0 4px;
+    }
+    .bar-label-col {
+        flex: 1;
+        text-align: center;
+        font-size: 11px;
+        color: var(--muted);
+        font-weight: 600;
+    }
+
+    /* resource table */
+    .stars { color: #f59e0b; font-size: 14px; letter-spacing: 1px; }
+    .no-rating { color: var(--muted); font-size: 13px; font-style: italic; }
+
+    @media (max-width: 900px) {
+        .summary-row { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 520px) {
+        .summary-row { grid-template-columns: 1fr; }
+    }
+</style>
+
+<div class="stats-page-header">
+    <h2>Statistics</h2>
+    <a href="{% url 'dashboard' %}" style="font-size:14px;">&larr; Back to dashboard</a>
+</div>
+
+<!-- Summary cards -->
+<div class="summary-row">
+    <div class="sum-card sum-confirmed">
+        <div class="sum-num">{{ status_totals.confirmed|default:0 }}</div>
+        <div class="sum-label">Confirmed (all time)</div>
+    </div>
+    <div class="sum-card sum-pending">
+        <div class="sum-num">{{ status_totals.pending|default:0 }}</div>
+        <div class="sum-label">Pending now</div>
+    </div>
+    <div class="sum-card sum-week">
+        <div class="sum-num">{{ week_confirmed }}</div>
+        <div class="sum-label">Confirmed this week</div>
+    </div>
+    <div class="sum-card sum-revenue">
+        <div class="sum-num">{{ total_revenue }}</div>
+        <div class="sum-label">Est. revenue (RON)</div>
+    </div>
+</div>
+
+<!-- Last 7 days bar chart -->
+<section class="card bar-chart-section">
+    <h3 style="margin-top:0; margin-bottom:16px;">Bookings — last 7 days</h3>
+    <div class="bar-chart">
+        {% for d in last_7 %}
+        <div class="bar-col">
+            <span class="bar-count{% if d.count == 0 %} zero{% endif %}">{{ d.count }}</span>
+            <div class="bar-fill{% if d.count == 0 %} zero{% endif %}" style="height:{{ d.pct }}%;"></div>
+        </div>
+        {% endfor %}
+    </div>
+    <div class="bar-labels">
+        {% for d in last_7 %}
+        <div class="bar-label-col">{{ d.label }}</div>
+        {% endfor %}
+    </div>
+</section>
+
+<!-- Per-resource table -->
+<section class="card">
+    <h3 style="margin-top:0; margin-bottom:14px;">Per court breakdown</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Court</th>
+                <th>Location</th>
+                <th>Sport</th>
+                <th>Total bookings</th>
+                <th>Confirmed</th>
+                <th>Est. revenue (RON)</th>
+                <th>Avg rating</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for rs in resource_stats %}
+            <tr>
+                <td><strong>{{ rs.resource.name }}</strong></td>
+                <td>{{ rs.resource.location.name }}</td>
+                <td>{{ rs.resource.sport_type|title }}</td>
+                <td>{{ rs.total }}</td>
+                <td>
+                    <span class="status-pill status-confirmed">{{ rs.confirmed }}</span>
+                </td>
+                <td>{{ rs.revenue }}</td>
+                <td>
+                    {% if rs.avg_rating %}
+                        <span class="stars">{% for i in "12345" %}{% if forloop.counter <= rs.avg_rating %}★{% else %}☆{% endif %}{% endfor %}</span>
+                        <span style="font-size:13px; color:var(--muted);">({{ rs.avg_rating }})</span>
+                    {% else %}
+                        <span class="no-rating">No reviews</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" style="color:var(--muted); text-align:center;">No courts found.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+
+{% endblock %}

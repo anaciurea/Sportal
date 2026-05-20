@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+<style>
+    .star-btn {
+        background: none;
+        border: none;
+        color: #d1d5db;
+        font-size: 26px;
+        cursor: pointer;
+        padding: 0 2px;
+        transition: color 0.1s;
+        line-height: 1;
+    }
+    .star-btn:hover,
+    .star-btn.active { color: #f59e0b; }
+    .review-stars { display: flex; gap: 2px; margin-bottom: 10px; }
+    .review-link {
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--primary);
+        cursor: pointer;
+        background: none;
+        border: none;
+        padding: 0;
+        text-decoration: underline;
+    }
+    .stars-display { color: #f59e0b; font-size: 13px; }
+</style>
+
+<section>
+    <h2 class="section-title">Available courts</h2>
+    <p style="color:var(--muted); margin-top:-8px; margin-bottom:18px;">Click on a court to see details and make a reservation.</p>
+    <div class="sports-grid">
+        {% for item in resources_with_images %}
+        <a href="{% url 'resource_detail' item.resource.id %}" class="sport-card-link">
+            <article class="sport-card">
+                <div class="sport-image" style="background-image: url('{{ item.image_url }}');"></div>
+                <div class="sport-content">
+                    <h3 class="sport-title">{{ item.resource.name }}</h3>
+                    <p class="sport-meta">{{ item.resource.location.address }}</p>
+                    <div class="sport-badges">
+                        <span class="badge badge-sport">{{ item.resource.sport_type|title }}</span>
+                        <span class="badge badge-price">{{ item.resource.price_per_hour }} RON / h</span>
+                    </div>
+                    <span class="card-cta">Book now &rarr;</span>
+                </div>
+            </article>
+        </a>
+        {% endfor %}
+    </div>
+</section>
+
+<section class="card" style="margin-top: 28px;">
+    <h2>My reservations</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Court</th>
+                <th>Location</th>
+                <th>Date</th>
+                <th>Interval</th>
+                <th>Status</th>
+                <th>Review</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in history %}
+            <tr id="hist-row-{{ item.id }}">
+                <td>{{ item.resource.name }}</td>
+                <td>{{ item.location.name }}</td>
+                <td>{{ item.date }}</td>
+                <td>{{ item.start_time|slice:":5" }} - {{ item.end_time|slice:":5" }}</td>
+                <td>
+                    <span class="status-pill status-{{ item.status }}">{{ item.get_status_display }}</span>
+                </td>
+                <td>
+                    {% if item.status == "confirmed" and not item.has_review and item.date < today %}
+                        <button class="review-link" onclick="openReviewModal({{ item.id }}, '{{ item.resource.name }}')">+ Add review</button>
+                    {% elif item.has_review %}
+                        <span class="stars-display">★ reviewed</span>
+                    {% else %}
+                        —
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" style="color:var(--muted);">No reservations yet. Click a court above to book!</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+
+<!-- Review modal -->
+<div id="review-modal" class="modal-overlay">
+    <div class="modal-box">
+        <h3 style="margin-top:0;">Leave a review</h3>
+        <p id="review-modal-info" style="color:var(--muted); font-size:14px;"></p>
+        <div class="review-stars" id="review-stars">
+            <button class="star-btn" data-val="1">★</button>
+            <button class="star-btn" data-val="2">★</button>
+            <button class="star-btn" data-val="3">★</button>
+            <button class="star-btn" data-val="4">★</button>
+            <button class="star-btn" data-val="5">★</button>
+        </div>
+        <div class="field">
+            <label for="review-comment">Comment (optional)</label>
+            <input type="text" id="review-comment" placeholder="How was it?">
+        </div>
+        <p id="review-error" style="color:var(--danger); font-size:13px; min-height:18px; margin:8px 0 0;"></p>
+        <div class="actions" style="margin-top:12px;">
+            <button id="review-submit-btn">Submit</button>
+            <button id="review-cancel-btn" class="btn-secondary">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<script>
+function getCookie(name) {
+    const v = `; ${document.cookie}`;
+    const p = v.split(`; ${name}=`);
+    if (p.length === 2) return p.pop().split(";").shift();
+}
+
+let reviewBookingId = null;
+let selectedRating = 0;
+
+function openReviewModal(bookingId, courtName) {
+    reviewBookingId = bookingId;
+    selectedRating = 0;
+    document.getElementById("review-modal-info").textContent = `Court: ${courtName}`;
+    document.getElementById("review-comment").value = "";
+    document.getElementById("review-error").textContent = "";
+    document.querySelectorAll(".star-btn").forEach(b => b.classList.remove("active"));
+    document.getElementById("review-modal").classList.add("active");
+}
+
+document.querySelectorAll(".star-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+        selectedRating = parseInt(btn.dataset.val);
+        document.querySelectorAll(".star-btn").forEach(b => {
+            b.classList.toggle("active", parseInt(b.dataset.val) <= selectedRating);
+        });
+    });
+});
+
+document.getElementById("review-cancel-btn").addEventListener("click", () => {
+    document.getElementById("review-modal").classList.remove("active");
+});
+
+document.getElementById("review-submit-btn").addEventListener("click", async () => {
+    const errEl = document.getElementById("review-error");
+    if (!selectedRating) { errEl.textContent = "Selectează un rating (1–5 stele)."; return; }
+    errEl.textContent = "";
+
+    const res = await fetch(`/api/requests/${reviewBookingId}/review/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": getCookie("csrftoken") },
+        body: JSON.stringify({ rating: selectedRating, comment: document.getElementById("review-comment").value }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+        document.getElementById("review-modal").classList.remove("active");
+        // Replace button with "reviewed" indicator
+        const row = document.getElementById(`hist-row-${reviewBookingId}`);
+        if (row) row.querySelector("td:last-child").innerHTML = '<span class="stars-display">★ reviewed</span>';
+    } else {
+        errEl.textContent = data.error || "Eroare la trimitere.";
+    }
+});
+</script>
+{% endblock %}

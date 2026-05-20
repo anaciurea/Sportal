@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+    .review-item {
+        border-bottom: 1px solid var(--line);
+        padding: 12px 0;
+    }
+    .review-item:last-child { border-bottom: none; }
+    .review-stars-display { color: #f59e0b; font-size: 16px; margin-right: 6px; }
+    .review-meta { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .review-comment { font-size: 14px; color: #354255; margin-top: 6px; }
+    .avg-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: #fff8e1;
+        border: 1px solid #ffe082;
+        border-radius: 999px;
+        padding: 4px 14px;
+        font-size: 14px;
+        font-weight: 700;
+        color: #e65100;
+        margin-bottom: 14px;
+    }
+    .no-reviews { color: var(--muted); font-style: italic; font-size: 14px; }
+</style>
+<div class="resource-hero" style="background-image: url('{{ image_url }}');"></div>
+
+<div class="row" style="margin-top: 22px;">
+    <section class="card">
+        <h2>{{ resource.name }}</h2>
+        <p class="subtitle">
+            <strong>{{ resource.sport_type|title }}</strong> &mdash; {{ resource.location.name }}<br>
+            <span style="font-size:18px; color: var(--primary); font-weight:700;">{{ resource.price_per_hour }} RON / hour</span>
+        </p>
+
+        <div class="form-grid">
+            <div class="field">
+                <label for="booking-date">Date</label>
+                <input id="booking-date" type="date">
+            </div>
+            <div class="field">
+                <label for="start-time">Start time</label>
+                <input id="start-time" type="time" value="18:00">
+            </div>
+            <div class="field">
+                <label for="end-time">End time</label>
+                <input id="end-time" type="time" value="19:00">
+            </div>
+        </div>
+        <div class="actions">
+            <button id="check-btn" class="btn-secondary">Check availability</button>
+            <button id="send-btn">Submit request</button>
+        </div>
+        <p id="result-msg" class="status-msg"></p>
+        <h3>Existing time slots</h3>
+        <ul id="slots-list" class="chip-list"></ul>
+    </section>
+
+    <section class="card">
+        <h2>Details</h2>
+        <table>
+            <tr><th>Sport</th><td>{{ resource.sport_type|title }}</td></tr>
+            <tr><th>Court</th><td>{{ resource.name }}</td></tr>
+            <tr><th>Location</th><td>{{ resource.location.name }}</td></tr>
+            <tr><th>Address</th><td>{{ resource.location.address }}</td></tr>
+            <tr><th>Price</th><td>{{ resource.price_per_hour }} RON / hour</td></tr>
+        </table>
+        <p style="margin-top:16px;"><a href="{% url 'dashboard' %}">&larr; Back to all courts</a></p>
+    </section>
+</div>
+
+<!-- Reviews section -->
+<section class="card" style="margin-top: 22px;" id="reviews-section">
+    <h2>Reviews <span id="reviews-count-label" style="font-size:16px; color:var(--muted); font-weight:400;"></span></h2>
+    <div id="avg-badge-wrap"></div>
+    <div id="reviews-list"><p style="color:var(--muted);">Loading...</p></div>
+</section>
+
+<script>
+const RESOURCE_ID = {{ resource.id }};
+
+function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(";").shift();
+}
+
+async function loadAvailability() {
+    const date = document.getElementById("booking-date").value;
+    const resultMsg = document.getElementById("result-msg");
+    const slotsList = document.getElementById("slots-list");
+    slotsList.innerHTML = "";
+
+    if (!date) { resultMsg.textContent = "Please select a date."; return; }
+
+    const res = await fetch(`/api/availability/?resource_id=${RESOURCE_ID}&date=${date}`);
+    if (!res.ok) { resultMsg.textContent = "Error while checking availability."; return; }
+
+    const data = await res.json();
+    if (!data.slots.length) {
+        slotsList.innerHTML = "<li>No occupied/pending slots on this date.</li>";
+        return;
+    }
+    data.slots.forEach((slot) => {
+        const li = document.createElement("li");
+        li.textContent = `${slot.start_time} - ${slot.end_time} (${slot.status})`;
+        slotsList.appendChild(li);
+    });
+}
+
+async function sendRequest() {
+    const payload = {
+        resource_id: RESOURCE_ID,
+        date: document.getElementById("booking-date").value,
+        start_time: document.getElementById("start-time").value,
+        end_time: document.getElementById("end-time").value,
+    };
+    const resultMsg = document.getElementById("result-msg");
+
+    const res = await fetch("/api/requests/create/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": getCookie("csrftoken") },
+        body: JSON.stringify(payload),
+    });
+
+    if (res.status === 201) {
+        resultMsg.textContent = "Request submitted successfully.";
+        await loadAvailability();
+        return;
+    }
+    const errorData = await res.json().catch(() => ({}));
+    resultMsg.textContent = errorData.error || "The request could not be submitted.";
+}
+
+document.getElementById("check-btn").addEventListener("click", loadAvailability);
+document.getElementById("send-btn").addEventListener("click", sendRequest);
+
+// Load reviews
+(async function loadReviews() {
+    const res = await fetch(`/api/resources/${RESOURCE_ID}/reviews/`);
+    if (!res.ok) return;
+    const data = await res.json();
+
+    const countLabel = document.getElementById("reviews-count-label");
+    countLabel.textContent = data.count ? `(${data.count})` : "";
+
+    const avgWrap = document.getElementById("avg-badge-wrap");
+    if (data.avg) {
+        const stars = "★".repeat(Math.round(data.avg)) + "☆".repeat(5 - Math.round(data.avg));
+        avgWrap.innerHTML = `<span class="avg-badge"><span>${stars}</span>${data.avg} / 5</span>`;
+    }
+
+    const list = document.getElementById("reviews-list");
+    if (!data.reviews.length) {
+        list.innerHTML = '<p class="no-reviews">No reviews yet.</p>';
+        return;
+    }
+    list.innerHTML = data.reviews.map(r => {
+        const stars = "★".repeat(r.rating) + "☆".repeat(5 - r.rating);
+        const comment = r.comment ? `<p class="review-comment">${r.comment}</p>` : "";
+        return `<div class="review-item">
+            <span class="review-stars-display">${stars}</span>
+            ${comment}
+            <p class="review-meta">${r.client} &mdash; ${r.date}</p>
+        </div>`;
+    }).join("");
+})();
+</script>
+{% endblock %}
