@@ -140,8 +140,7 @@ LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'dashboard'
 LOGOUT_REDIRECT_URL = 'login'
 
-# Email notifications (always in server console for demo)
-EMAIL_USE_SMTP = False
+# Email notifications (console by default; configure .env for real SMTP)
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 DEFAULT_FROM_EMAIL = "noreply@sportal.local"
 EMAIL_FAIL_SILENTLY = os.getenv("EMAIL_FAIL_SILENTLY", "false").lower() == "true"

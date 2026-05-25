@@ -1,49 +1,62 @@
-# Sportal MVP (Django + JavaScript)
+# Sportal MVP
 
-## Run locally
+Sistem de rezervari de resurse sportive construit cu Django (backend + templates) si JavaScript nativ pe frontend.
+
+## Rulare locala
 
 ```bash
-cd "/mnt/c/Users/ana_c/Desktop/fac/anul3/sem2/ip/backend"
+cd backend
 PYTHONPATH=python_packages python3 manage.py migrate
 PYTHONPATH=python_packages python3 manage.py seed_demo
 PYTHONPATH=python_packages python3 manage.py runserver
-
-kill port: fuser -k 8000/tcp
 ```
 
-## Demo users
+Pentru a opri portul: `fuser -k 8000/tcp`
 
-- `admin` / `admin1234`
-- `client_demo` / `client1234`
-- `employee_demo` / `employee1234`
-- `anaciurea644@gmail.com` / `ana1234` (can log in with email)
+## URL-uri principale
 
-## Real email delivery (Gmail SMTP)
+| URL | Descriere |
+|-----|-----------|
+| `http://127.0.0.1:8000/` | Dashboard (client sau angajat) |
+| `http://127.0.0.1:8000/login/` | Autentificare |
+| `http://127.0.0.1:8000/register/` | Inregistrare cont client |
+| `http://127.0.0.1:8000/stats/` | Statistici (doar angajat) |
+| `http://127.0.0.1:8000/admin/` | Panou admin Django |
 
-By default, emails are printed in terminal (console backend). To send real emails:
+## Utilizatori demo
 
-```bash
-cp .env.example .env
-# edit .env and put your real Gmail App Password in EMAIL_HOST_PASSWORD
-PYTHONPATH=python_packages python3 manage.py runserver
-```
+| Username | Parola | Rol |
+|----------|--------|-----|
+| `admin` | `admin1234` | Superuser |
+| `employee_demo` | `employee1234` | Angajat |
+| `client_demo` | `client1234` | Client |
+| `anaciurea644@gmail.com` | `ana1234` | Client (login cu email) |
 
-For Gmail, use an App Password (16 chars), not your normal account password.
-
-## Main URLs
-
-- Login: `http://127.0.0.1:8000/login/`
-- Register client: `http://127.0.0.1:8000/register/`
-- Admin: `http://127.0.0.1:8000/admin/`
-
-## Email confirmations/rejections
-
-- On employee confirm/reject, the client receives an email notification.
-- In local development, emails are printed in the terminal running `runserver` (console backend).
-- For real email delivery, configure SMTP in `sportal/settings.py`.
-
-## Test suite
+## Teste automate
 
 ```bash
 PYTHONPATH=python_packages python3 manage.py test core
+```
+
+## Arhitectura
+
+**Stack:** Python 3 + Django 5, Django Templates, JavaScript nativ, SQLite (ORM Django)
+
+**Modele principale:**
+- `Company` / `Location` — structura organizationala
+- `SportResource` — teren (tip sport + pret/ora)
+- `EmployeeProfile` — leaga un user de o locatie ca angajat
+- `BookingRequest` — cerere de rezervare cu statusuri: `pending`, `confirmed`, `rejected`, `cancelled`
+- `Review` — recenzie post-rezervare (1–5 stele)
+
+**Siguranta concurenta:** `transaction.atomic` + `select_for_update` in `core/services/booking_service.py`
+
+## Notificari email
+
+Implicit, emailurile se afiseaza in terminal (console backend). Pentru trimitere reala prin Gmail:
+
+```bash
+cp .env.example .env
+# Editeaza .env si completeaza EMAIL_HOST_PASSWORD cu un App Password Gmail (16 caractere)
+PYTHONPATH=python_packages python3 manage.py runserver
 ```

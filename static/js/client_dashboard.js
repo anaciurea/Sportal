@@ -1,9 +1,3 @@
-function getCookie(name) {
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; ${name}=`);
-  if (parts.length === 2) return parts.pop().split(";").shift();
-}
-
 const resourceSelect = document.getElementById("resource-select");
 const allResourceOptions = Array.from(resourceSelect.options).map((option) =>
   option.cloneNode(true)
